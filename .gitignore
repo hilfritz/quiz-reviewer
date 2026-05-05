@@ -216,3 +216,9 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+.DS_Store
+.idea/misc.xml
+.idea/modules.xml
+.idea/quiz-reviewer.iml
+.idea/vcs.xml
+/.idea

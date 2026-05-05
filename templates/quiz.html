@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>IBM Maximo C1000-183 Quiz</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <main class="container">
+    <header class="header">
+      <div>
+        <h1>IBM Maximo C1000-183 Quiz</h1>
+        <p class="subtle">
+          Active questions: {{ questions|length }} | Passing score: {{ passing_percent }}%
+          | Show answer on Next: {{ 'ON' if show_answer_when_proceeding else 'OFF' }}
+        </p>
+      </div>
+      <a class="button ghost" href="{{ url_for('index') }}">Restart Quiz</a>
+    </header>
+
+    {% if results %}
+      <section class="result-card">
+        <h2>Quiz Result</h2>
+        <div class="score-grid">
+          <div><span>Total Questions</span><strong>{{ results.total }}</strong></div>
+          <div><span>Total Correct</span><strong>{{ results.correct }}</strong></div>
+          <div><span>Score</span><strong>{{ results.score_percent }}%</strong></div>
+          <div><span>Status</span><strong class="{{ 'pass' if results.passed else 'fail' }}">{{ 'PASSED' if results.passed else 'FAILED' }}</strong></div>
+        </div>
+      </section>
+
+      {% if results.wrong %}
+        <section>
+          <h2>Review Wrong Answers</h2>
+          {% for item in results.wrong %}
+            <article class="wrong-card">
+              <div class="question-meta">
+                ID {{ item.id }} | {{ item.source }} | {{ item.difficulty }}
+              </div>
+              <h3>{{ item.question }}</h3>
+              <ul class="choices-review">
+                {% if item.choice_a %}<li>A. {{ item.choice_a }}</li>{% endif %}
+                {% if item.choice_b %}<li>B. {{ item.choice_b }}</li>{% endif %}
+                {% if item.choice_c %}<li>C. {{ item.choice_c }}</li>{% endif %}
+                {% if item.choice_d %}<li>D. {{ item.choice_d }}</li>{% endif %}
+                {% if item.choice_e %}<li>E. {{ item.choice_e }}</li>{% endif %}
+              </ul>
+              <p>Your answer: <strong>{{ item.user_answer }}</strong></p>
+              <p>Correct answer: <strong>{{ item.correct_answer }}</strong></p>
+              <p class="remarks">Explanation: {{ item.explanation }}</p>
+            </article>
+          {% endfor %}
+        </section>
+      {% else %}
+        <section class="perfect">
+          <h2>Perfect score. No mistakes.</h2>
+        </section>
+      {% endif %}
+
+      <section class="actions">
+        <a class="button" href="{{ url_for('index') }}">Restart Quiz</a>
+      </section>
+
+      <section class="history">
+        <h2>Score History</h2>
+        {% if history %}
+          <table>
+            <thead>
+              <tr>
+                <th>Date Time</th>
+                <th>Total</th>
+                <th>Correct</th>
+                <th>Score</th>
+                <th>Passed</th>
+                <th>Wrong IDs</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in history[-10:]|reverse %}
+                <tr>
+                  <td>{{ row.datetime_finished }}</td>
+                  <td>{{ row.total_questions }}</td>
+                  <td>{{ row.total_correct }}</td>
+                  <td>{{ row.score_percent }}%</td>
+                  <td>{{ row.passed }}</td>
+                  <td>{{ row.wrong_question_ids }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        {% endif %}
+      </section>
+
+    {% else %}
+      <form method="post" action="{{ url_for('submit') }}" id="quizForm">
+        {% for q in questions %}
+          <section
+            class="question-card {% if not loop.first %}hidden{% endif %}"
+            data-question-index="{{ loop.index0 }}"
+            data-question-id="{{ q.id }}"
+            data-correct-answer="{{ q.correct_answer }}"
+          >
+            <div class="question-meta">
+              Question {{ loop.index }} of {{ questions|length }} | ID {{ q.id }} | {{ q.source }}
+              <span class="tag">{{ q.difficulty }}</span>
+            </div>
+
+            <h2>{{ q.question }}</h2>
+
+            <div class="choices">
+              {% if q.choice_a %}
+                <label data-choice="A"><input type="checkbox" name="answer_{{ q.id }}" value="A"> A. {{ q.choice_a }}</label>
+              {% endif %}
+              {% if q.choice_b %}
+                <label data-choice="B"><input type="checkbox" name="answer_{{ q.id }}" value="B"> B. {{ q.choice_b }}</label>
+              {% endif %}
+              {% if q.choice_c %}
+                <label data-choice="C"><input type="checkbox" name="answer_{{ q.id }}" value="C"> C. {{ q.choice_c }}</label>
+              {% endif %}
+              {% if q.choice_d %}
+                <label data-choice="D"><input type="checkbox" name="answer_{{ q.id }}" value="D"> D. {{ q.choice_d }}</label>
+              {% endif %}
+              {% if q.choice_e %}
+                <label data-choice="E"><input type="checkbox" name="answer_{{ q.id }}" value="E"> E. {{ q.choice_e }}</label>
+              {% endif %}
+            </div>
+
+            <p class="remarks">Topic note: {{ q.remarks }}</p>
+
+            <div class="answer-feedback hidden">
+              <h3 class="feedback-title"></h3>
+              <p>Your answer: <strong class="user-answer-text"></strong></p>
+              <p>Correct answer: <strong>{{ q.correct_answer }}</strong></p>
+              <p class="remarks">Explanation: {{ q.explanation }}</p>
+            </div>
+          </section>
+        {% endfor %}
+
+        <div class="nav">
+          <button type="button" id="prevBtn" class="secondary">Previous</button>
+          <button type="button" id="nextBtn">Next</button>
+          <button type="submit" id="submitBtn" class="hidden">Submit Quiz</button>
+        </div>
+      </form>
+    {% endif %}
+  </main>
+
+  <script>
+    const SHOW_ANSWER_WHEN_PROCEEDING = {{ 'true' if show_answer_when_proceeding else 'false' }};
+    const cards = Array.from(document.querySelectorAll(".question-card"));
+    let current = 0;
+    const prevBtn = document.getElementById("prevBtn");
+    const nextBtn = document.getElementById("nextBtn");
+    const submitBtn = document.getElementById("submitBtn");
+
+    function normalizeAnswer(values) {
+      return values
+        .map(v => v.trim().toUpperCase())
+        .filter(Boolean)
+        .sort()
+        .join(",");
+    }
+
+    function getSelectedAnswer(card) {
+      const checked = Array.from(card.querySelectorAll("input[type='checkbox']:checked"));
+      return normalizeAnswer(checked.map(input => input.value));
+    }
+
+    function lockInputs(card) {
+      card.querySelectorAll("input[type='checkbox']").forEach(input => {
+        input.disabled = true;
+      });
+    }
+
+    function revealAnswer(card) {
+      const correctAnswer = normalizeAnswer(card.dataset.correctAnswer.split(","));
+      const userAnswer = getSelectedAnswer(card);
+      const feedback = card.querySelector(".answer-feedback");
+      const title = card.querySelector(".feedback-title");
+      const userAnswerText = card.querySelector(".user-answer-text");
+
+      card.querySelectorAll(".choices label").forEach(label => {
+        const choice = label.dataset.choice;
+        if (correctAnswer.split(",").includes(choice)) {
+          label.classList.add("correct-choice");
+        }
+      });
+
+      if (userAnswer === correctAnswer) {
+        title.textContent = "Correct";
+        feedback.classList.add("correct-feedback");
+        feedback.classList.remove("wrong-feedback");
+      } else {
+        title.textContent = "Incorrect";
+        feedback.classList.add("wrong-feedback");
+        feedback.classList.remove("correct-feedback");
+
+        card.querySelectorAll("input[type='checkbox']:checked").forEach(input => {
+          const label = input.closest("label");
+          if (label && !correctAnswer.split(",").includes(input.value)) {
+            label.classList.add("wrong-choice");
+          }
+        });
+      }
+
+      userAnswerText.textContent = userAnswer || "No answer";
+      feedback.classList.remove("hidden");
+      card.dataset.answerShown = "true";
+      lockInputs(card);
+    }
+
+    function showCard(index) {
+      cards.forEach((card, i) => card.classList.toggle("hidden", i !== index));
+      if (!prevBtn) return;
+      prevBtn.disabled = index === 0;
+      nextBtn.classList.toggle("hidden", index === cards.length - 1);
+      submitBtn.classList.toggle("hidden", index !== cards.length - 1);
+      nextBtn.textContent = SHOW_ANSWER_WHEN_PROCEEDING && cards[index]?.dataset.answerShown !== "true"
+        ? "Check Answer"
+        : "Next";
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+
+    function advanceOrReveal() {
+      const card = cards[current];
+
+      if (SHOW_ANSWER_WHEN_PROCEEDING && card.dataset.answerShown !== "true") {
+        revealAnswer(card);
+        nextBtn.textContent = current === cards.length - 1 ? "Submit Quiz" : "Next";
+        if (current === cards.length - 1) {
+          nextBtn.classList.add("hidden");
+          submitBtn.classList.remove("hidden");
+        }
+        return;
+      }
+
+      if (current < cards.length - 1) {
+        current++;
+        showCard(current);
+      }
+    }
+
+    if (cards.length) {
+      showCard(current);
+
+      prevBtn.addEventListener("click", () => {
+        if (current > 0) {
+          current--;
+          showCard(current);
+        }
+      });
+
+      nextBtn.addEventListener("click", advanceOrReveal);
+    }
+  </script>
+</body>
+</html>
