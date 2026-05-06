@@ -82,3 +82,17 @@ explanation
 ```
 
 This is used when showing feedback after each question and when reviewing mistakes at the end.
+
+
+## Advanced Operations Pack Added
+
+The question bank includes an advanced operations pack covering:
+
+- priority
+- dispatching dashboard
+- skill level
+- craft/qualification matching
+- work zone
+- resource utilization
+- resource leveling
+- scheduling and dispatching scenarios
