@@ -96,3 +96,22 @@ The question bank includes an advanced operations pack covering:
 - resource utilization
 - resource leveling
 - scheduling and dispatching scenarios
+
+
+## Platform Configuration + Procurement Pack Added
+
+Additional questions now cover:
+- domains
+- synonym domains
+- crossover domains
+- classifications
+- Application Designer
+- Conditional UI
+- automation scripts
+- security groups
+- purchase requisitions
+- purchase orders
+- receiving
+- invoice matching
+- companies/vendors
+- contract types
