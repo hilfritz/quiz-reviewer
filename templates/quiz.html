@@ -6,15 +6,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
-<body>
+<body class="compact-mobile">
   <main class="container">
     <header class="header">
       <div>
         <h1>IBM Maximo C1000-183 Quiz</h1>
-        <p class="subtle">
-          Active questions: {{ questions|length }} | Passing score: {{ passing_percent }}%
-          | Show answer on Next: {{ 'ON' if show_answer_when_proceeding else 'OFF' }}
+        <p class="subtle compact-header-text">
+          {{ questions|length }} questions | Pass: {{ passing_percent }}%
         </p>
+        {% if not results %}
+          <p id="compactStatsLine" class="compact-stats-line">Q1/{{ questions|length }} • Correct 0/0 • 0%</p>
+        {% endif %}
       </div>
       <a class="button ghost" href="{{ url_for('index') }}">Restart Quiz</a>
     </header>
@@ -253,6 +255,7 @@
         feedback.classList.add("correct-feedback");
         feedback.classList.remove("wrong-feedback");
       } else {
+        card.dataset.wasCorrect = "false";
         title.textContent = "Incorrect";
         feedback.classList.add("wrong-feedback");
         feedback.classList.remove("correct-feedback");
@@ -269,9 +272,23 @@
       feedback.classList.remove("hidden");
       card.dataset.answerShown = "true";
       lockInputs(card);
+      updateCompactStatsLine();
       markQuestionScored(card, isCorrect);
 
       return isCorrect;
+    }
+
+
+    function updateCompactStatsLine() {
+      const line = document.getElementById("compactStatsLine");
+      if (!line || !cards.length) return;
+
+      const answeredCards = cards.filter(card => card.dataset.answerShown === "true");
+      const correctCards = answeredCards.filter(card => card.dataset.wasCorrect === "true");
+      const answered = answeredCards.length;
+      const correct = correctCards.length;
+      const pct = answered ? Math.round((correct / answered) * 100) : 0;
+      line.textContent = `Q${current + 1}/${cards.length} • Correct ${correct}/${answered} • ${pct}%`;
     }
 
     function showCard(index) {

@@ -278,3 +278,157 @@ th {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* v8 compact mobile UI */
+.compact-stats-line {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: #4b5563;
+  font-weight: 600;
+}
+
+.compact-header-text {
+  margin-bottom: 2px;
+}
+
+@media (max-width: 720px) {
+  body {
+    background: #ffffff;
+  }
+
+  .container {
+    margin: 0;
+    padding: 10px;
+    border-radius: 0;
+    box-shadow: none;
+    max-width: 100%;
+  }
+
+  .header {
+    padding-bottom: 8px;
+    margin-bottom: 10px;
+    gap: 6px;
+  }
+
+  .header h1 {
+    font-size: 18px;
+    line-height: 1.2;
+    margin-bottom: 3px;
+  }
+
+  .subtle {
+    font-size: 12px;
+    line-height: 1.25;
+  }
+
+  .button.ghost {
+    padding: 7px 10px;
+    font-size: 12px;
+    width: auto;
+  }
+
+  .question-card {
+    padding: 12px;
+    margin-bottom: 10px;
+    border-radius: 10px;
+  }
+
+  .question-meta {
+    font-size: 11px;
+    margin-bottom: 8px;
+  }
+
+  .tag {
+    font-size: 10px;
+    padding: 2px 6px;
+  }
+
+  .question-card h2 {
+    font-size: 17px;
+    line-height: 1.32;
+    margin-bottom: 12px;
+  }
+
+  .choices {
+    gap: 7px;
+    margin: 10px 0;
+  }
+
+  .choices label {
+    padding: 10px;
+    border-radius: 8px;
+    font-size: 14px;
+    line-height: 1.28;
+  }
+
+  .remarks {
+    font-size: 12px;
+    line-height: 1.3;
+    margin: 8px 0 0;
+  }
+
+  .answer-feedback {
+    margin-top: 10px;
+    padding: 10px;
+    border-radius: 9px;
+    font-size: 13px;
+  }
+
+  .answer-feedback h3,
+  .feedback-title {
+    font-size: 15px;
+    margin-bottom: 5px;
+  }
+
+  .nav {
+    position: sticky;
+    bottom: 0;
+    background: #ffffff;
+    padding: 8px 0 0;
+    margin-top: 8px;
+    gap: 8px;
+  }
+
+  button,
+  .button {
+    padding: 10px 12px;
+    font-size: 14px;
+    border-radius: 8px;
+  }
+
+  /* Hide large live-stat cards if v7 added them. Keep only compact one-line stats. */
+  .live-score,
+  .live-stats,
+  .stats-grid,
+  .progress-grid,
+  .score-summary:not(.result-card),
+  .current-score-card {
+    display: none !important;
+  }
+
+  .result-card {
+    padding: 14px;
+  }
+
+  .score-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .score-grid div {
+    padding: 10px;
+  }
+
+  .score-grid strong {
+    font-size: 17px;
+  }
+
+  table {
+    font-size: 12px;
+  }
+
+  th, td {
+    padding: 6px;
+  }
+}
