@@ -275,10 +275,22 @@
       const line = document.getElementById("compactStatsLine");
       if (!line || !cards.length) return;
 
-      const answeredCards = cards.filter(card => card.dataset.answerShown === "true");
-      const correctCards = answeredCards.filter(card => card.dataset.wasCorrect === "true");
-      const answered = answeredCards.length;
-      const correct = correctCards.length;
+      let answered = 0;
+      let correct = 0;
+
+      cards.forEach(card => {
+        const userAnswer = getSelectedAnswer(card);
+        const correctAnswer = getCorrectAnswer(card);
+
+        if (userAnswer) {
+          answered += 1;
+
+          if (userAnswer === correctAnswer) {
+            correct += 1;
+          }
+        }
+      });
+
       const pct = answered ? Math.round((correct / answered) * 100) : 0;
       line.textContent = `Q${current + 1}/${cards.length} • Correct ${correct}/${answered} • ${pct}%`;
     }
@@ -300,6 +312,7 @@
         : "Next";
       window.scrollTo({ top: 0, behavior: "smooth" });
       updateLiveScore();
+      updateCompactStatsLine();
     }
 
     function moveNextOrSubmit() {
@@ -335,13 +348,14 @@
       const userAnswer = getSelectedAnswer(card);
       const correctAnswer = getCorrectAnswer(card);
 
+      // Update the compact stats immediately, even for wrong selections.
+      updateCompactStatsLine();
+
       // If the user selected the full correct answer, immediately mark it correct,
       // show feedback briefly, then continue after 1 second.
       if (userAnswer && userAnswer === correctAnswer) {
         revealAnswer(card);
-        autoAdvanceTimer = setTimeout(() => {
-          moveNextOrSubmit();
-        }, AUTO_ADVANCE_CORRECT_DELAY_MS);
+        moveNextOrSubmit();
       }
     }
 
