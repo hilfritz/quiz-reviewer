@@ -168,6 +168,19 @@
     }
 
     function lockInputs(card) {
+      // Important: disabled checkbox inputs are NOT submitted by HTML forms.
+      // Before disabling them, copy selected answers into hidden inputs with the same name.
+      const checkedInputs = Array.from(card.querySelectorAll("input[type='checkbox']:checked"));
+
+      checkedInputs.forEach(input => {
+        const hidden = document.createElement("input");
+        hidden.type = "hidden";
+        hidden.name = input.name;
+        hidden.value = input.value;
+        hidden.dataset.generatedAnswer = "true";
+        card.appendChild(hidden);
+      });
+
       card.querySelectorAll("input[type='checkbox']").forEach(input => {
         input.disabled = true;
       });
