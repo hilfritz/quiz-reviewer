@@ -19,6 +19,14 @@
       <a class="button ghost" href="{{ url_for('index') }}">Restart Quiz</a>
     </header>
 
+    {% if not results %}
+      <section class="live-score-card">
+        <div><span>Answered</span><strong id="liveAnswered">0</strong> / <strong id="liveTotal">{{ questions|length }}</strong></div>
+        <div><span>Correct</span><strong id="liveCorrect">0</strong></div>
+        <div><span>Current %</span><strong id="livePercent">0%</strong></div>
+      </section>
+    {% endif %}
+
     {% if results %}
       <section class="result-card">
         <h2>Quiz Result</h2>
@@ -148,11 +156,20 @@
 
   <script>
     const SHOW_ANSWER_WHEN_PROCEEDING = {{ 'true' if show_answer_when_proceeding else 'false' }};
+    const AUTO_ADVANCE_CORRECT_DELAY_MS = 1000;
+
     const cards = Array.from(document.querySelectorAll(".question-card"));
     let current = 0;
+    let autoAdvanceTimer = null;
+
     const prevBtn = document.getElementById("prevBtn");
     const nextBtn = document.getElementById("nextBtn");
     const submitBtn = document.getElementById("submitBtn");
+    const quizForm = document.getElementById("quizForm");
+
+    const liveAnswered = document.getElementById("liveAnswered");
+    const liveCorrect = document.getElementById("liveCorrect");
+    const livePercent = document.getElementById("livePercent");
 
     function normalizeAnswer(values) {
       return values
@@ -162,16 +179,34 @@
         .join(",");
     }
 
+    function getCorrectAnswer(card) {
+      return normalizeAnswer((card.dataset.correctAnswer || "").split(","));
+    }
+
     function getSelectedAnswer(card) {
       const checked = Array.from(card.querySelectorAll("input[type='checkbox']:checked"));
       return normalizeAnswer(checked.map(input => input.value));
     }
 
-    function lockInputs(card) {
-      // Important: disabled checkbox inputs are NOT submitted by HTML forms.
-      // Before disabling them, copy selected answers into hidden inputs with the same name.
-      const checkedInputs = Array.from(card.querySelectorAll("input[type='checkbox']:checked"));
+    function updateLiveScore() {
+      if (!liveAnswered || !liveCorrect || !livePercent) return;
 
+      const scoredCards = cards.filter(card => card.dataset.scored === "true");
+      const answeredCount = scoredCards.length;
+      const correctCount = scoredCards.filter(card => card.dataset.wasCorrect === "true").length;
+      const percent = answeredCount === 0 ? 0 : Math.round((correctCount / answeredCount) * 100);
+
+      liveAnswered.textContent = answeredCount;
+      liveCorrect.textContent = correctCount;
+      livePercent.textContent = `${percent}%`;
+    }
+
+    function preserveSelectedAnswers(card) {
+      // Disabled checkbox inputs are not submitted by HTML forms.
+      // Keep selected answers as hidden inputs before disabling the visible choices.
+      card.querySelectorAll("input[data-generated-answer='true']").forEach(input => input.remove());
+
+      const checkedInputs = Array.from(card.querySelectorAll("input[type='checkbox']:checked"));
       checkedInputs.forEach(input => {
         const hidden = document.createElement("input");
         hidden.type = "hidden";
@@ -180,27 +215,40 @@
         hidden.dataset.generatedAnswer = "true";
         card.appendChild(hidden);
       });
+    }
 
+    function lockInputs(card) {
+      preserveSelectedAnswers(card);
       card.querySelectorAll("input[type='checkbox']").forEach(input => {
         input.disabled = true;
       });
     }
 
+    function markQuestionScored(card, isCorrect) {
+      if (card.dataset.scored !== "true") {
+        card.dataset.scored = "true";
+        card.dataset.wasCorrect = isCorrect ? "true" : "false";
+      }
+      updateLiveScore();
+    }
+
     function revealAnswer(card) {
-      const correctAnswer = normalizeAnswer(card.dataset.correctAnswer.split(","));
+      const correctAnswer = getCorrectAnswer(card);
+      const correctParts = correctAnswer.split(",").filter(Boolean);
       const userAnswer = getSelectedAnswer(card);
       const feedback = card.querySelector(".answer-feedback");
       const title = card.querySelector(".feedback-title");
       const userAnswerText = card.querySelector(".user-answer-text");
+      const isCorrect = userAnswer === correctAnswer;
 
       card.querySelectorAll(".choices label").forEach(label => {
         const choice = label.dataset.choice;
-        if (correctAnswer.split(",").includes(choice)) {
+        if (correctParts.includes(choice)) {
           label.classList.add("correct-choice");
         }
       });
 
-      if (userAnswer === correctAnswer) {
+      if (isCorrect) {
         title.textContent = "Correct";
         feedback.classList.add("correct-feedback");
         feedback.classList.remove("wrong-feedback");
@@ -211,7 +259,7 @@
 
         card.querySelectorAll("input[type='checkbox']:checked").forEach(input => {
           const label = input.closest("label");
-          if (label && !correctAnswer.split(",").includes(input.value)) {
+          if (label && !correctParts.includes(input.value)) {
             label.classList.add("wrong-choice");
           }
         });
@@ -221,11 +269,20 @@
       feedback.classList.remove("hidden");
       card.dataset.answerShown = "true";
       lockInputs(card);
+      markQuestionScored(card, isCorrect);
+
+      return isCorrect;
     }
 
     function showCard(index) {
+      if (autoAdvanceTimer) {
+        clearTimeout(autoAdvanceTimer);
+        autoAdvanceTimer = null;
+      }
+
       cards.forEach((card, i) => card.classList.toggle("hidden", i !== index));
       if (!prevBtn) return;
+
       prevBtn.disabled = index === 0;
       nextBtn.classList.toggle("hidden", index === cards.length - 1);
       submitBtn.classList.toggle("hidden", index !== cards.length - 1);
@@ -233,6 +290,16 @@
         ? "Check Answer"
         : "Next";
       window.scrollTo({ top: 0, behavior: "smooth" });
+      updateLiveScore();
+    }
+
+    function moveNextOrSubmit() {
+      if (current < cards.length - 1) {
+        current++;
+        showCard(current);
+      } else if (quizForm) {
+        quizForm.requestSubmit();
+      }
     }
 
     function advanceOrReveal() {
@@ -248,9 +315,24 @@
         return;
       }
 
-      if (current < cards.length - 1) {
-        current++;
-        showCard(current);
+      moveNextOrSubmit();
+    }
+
+    function handleChoiceChange(event) {
+      const input = event.target;
+      const card = input.closest(".question-card");
+      if (!card || card.dataset.answerShown === "true") return;
+
+      const userAnswer = getSelectedAnswer(card);
+      const correctAnswer = getCorrectAnswer(card);
+
+      // If the user selected the full correct answer, immediately mark it correct,
+      // show feedback briefly, then continue after 1 second.
+      if (userAnswer && userAnswer === correctAnswer) {
+        revealAnswer(card);
+        autoAdvanceTimer = setTimeout(() => {
+          moveNextOrSubmit();
+        }, AUTO_ADVANCE_CORRECT_DELAY_MS);
       }
     }
 
@@ -265,6 +347,12 @@
       });
 
       nextBtn.addEventListener("click", advanceOrReveal);
+
+      cards.forEach(card => {
+        card.querySelectorAll("input[type='checkbox']").forEach(input => {
+          input.addEventListener("change", handleChoiceChange);
+        });
+      });
     }
   </script>
 </body>
